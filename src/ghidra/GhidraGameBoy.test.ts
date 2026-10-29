@@ -32,7 +32,7 @@ const targetFor = async (banks = 4) => {
 };
 
 describe("Game Boy cartridge boundary", () => {
-  it.each([2, 4, 512])(
+  it.each([2, 4, 72, 80, 96, 512])(
     "retains header declarations and every bank for %i banks",
     (banks) => {
       const rom = buildGameBoyRom({ banks, cgb: true });
@@ -48,6 +48,29 @@ describe("Game Boy cartridge boundary", () => {
       expect(gameBoyRomBanks(result.value)).toHaveLength(banks);
     },
   );
+  it.each([
+    [0x52, 72],
+    [0x53, 80],
+    [0x54, 96],
+  ])("validates special ROM size code %#", (sizeCode, banks) => {
+    const rom = buildGameBoyRom({ banks });
+    expect(rom[0x148]).toBe(sizeCode);
+    const parsed = parseGameBoyHeader(rom, rom.length);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.value.romBanks).toBe(banks);
+    const lastBank = gameBoyRomBanks(parsed.value).at(-1);
+    expect(lastBank).toMatchObject({
+      bank: banks - 1,
+      fileOffset: (banks - 1) * 0x4000,
+      size: 0x4000,
+    });
+    expect(lastBank!.fileOffset + lastBank!.size).toBe(rom.length);
+    expect(
+      parseGameBoyHeader(rom.subarray(0, rom.length - 1), rom.length - 1).ok,
+    ).toBe(false);
+    const padded = Buffer.concat([rom, Buffer.from([0])]);
+    expect(parseGameBoyHeader(padded, padded.length).ok).toBe(false);
+  });
   it("rejects truncated, padded, unknown-size and unsupported-mapper inputs", () => {
     const rom = buildGameBoyRom();
     expect(parseGameBoyHeader(rom.subarray(0, 0x100), rom.length).ok).toBe(
@@ -121,6 +144,11 @@ describe("Game Boy cartridge boundary", () => {
       entry_point: "0x100",
       gameboy_import: "physical-banks-overlays-v1",
     });
+    const originalDigest = resolved.value.profile?.digest;
+    await writeFile(join(languages, "sm83.sla"), Buffer.from([1, 2, 3]));
+    const updated = await provider.resolveAnalysisProfile(target);
+    if (!updated.ok) throw updated.error;
+    expect(updated.value.profile?.digest).not.toBe(originalDigest);
     await provider.closeOwnedResources();
   });
 });
@@ -135,6 +163,11 @@ describe("Game Boy bank analysis", () => {
     expect(
       parseGhidraSeeds("ROM_002:0x4000\tfunction\nROM_002:0x04000\tfunction\n")
         .ok,
+    ).toBe(false);
+    expect(
+      parseGhidraSeeds(
+        "ROM_002:0x4000\tfunction\tfirst\n%52OM_002:0x4000\tfunction\tsecond\n",
+      ).ok,
     ).toBe(false);
     expect(parseGhidraSeeds("ROM_002:0x10000000000000000\tcode\n").ok).toBe(
       false,

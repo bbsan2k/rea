@@ -1,5 +1,8 @@
 import { GHIDRA_GAME_BOY_LANGUAGE } from "./GhidraGameBoyProfile.js";
-import { readGhidraLanguageCatalog } from "./GhidraLanguageCatalog.js";
+import {
+  readGhidraLanguageCatalog,
+  readGhidraLanguageFingerprint,
+} from "./GhidraLanguageCatalog.js";
 import type { ArtifactResourceScope } from "../artifacts/ArtifactResourceScope.js";
 import type {
   AnalysisProfileResolution,
@@ -218,6 +221,20 @@ export const resolveGhidraAnalysisProfile = async (
           "Install a compatible SM83 language (SM83:LE:16:default, compiler default) in GHIDRA_INSTALL_DIR/Ghidra/Processors or Ghidra/Extensions. Stock Ghidra Z80 cannot decode Game Boy ROMs. REA does not install this prerequisite.",
         ),
       );
+    const languageFingerprint = await readGhidraLanguageFingerprint(
+      installation.installDir,
+      GHIDRA_GAME_BOY_LANGUAGE.languageId,
+      resources,
+      signal,
+    );
+    if (languageFingerprint === null)
+      return err(
+        new AnalysisUnsupportedTargetError(
+          "resolve_analysis_profile",
+          target.path,
+          "The installed SM83 language definition disappeared while the analysis profile was being resolved.",
+        ),
+      );
     return ok({
       profile: createProfile({
         ...binaryLoaderPolicy(target, installation),
@@ -225,6 +242,7 @@ export const resolveGhidraAnalysisProfile = async (
         language_id: GHIDRA_GAME_BOY_LANGUAGE.languageId,
         compiler_spec_id: "default",
         language_selection: "provider-pinned-v1",
+        language_fingerprint: languageFingerprint,
         entry_point: "0x100",
         gameboy_import: "physical-banks-overlays-v1",
         gameboy_header: {

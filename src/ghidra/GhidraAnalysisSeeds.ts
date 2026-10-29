@@ -70,6 +70,21 @@ const seedLineError = (line: number, constraint: string) =>
     ],
   });
 
+const decodedAddressSpace = (space: string | null): string => {
+  if (space === null) return "";
+  const bytes: number[] = [];
+  for (let index = 0; index < space.length;) {
+    if (space[index] === "%") {
+      bytes.push(Number.parseInt(space.slice(index + 1, index + 3), 16));
+      index += 3;
+    } else {
+      bytes.push(space.charCodeAt(index));
+      index += 1;
+    }
+  }
+  return Buffer.from(bytes).toString("utf8");
+};
+
 /**
  * Parse `address<TAB>kind[<TAB>name]` lines. Blank lines and `#` comments are
  * ignored. Addresses are hexadecimal offsets, optionally qualified by an encoded address space.
@@ -117,7 +132,7 @@ export const parseGhidraSeeds = (
         seedLineError(number, "a code seed takes no name; add a label seed"),
       );
     const value = coordinate.data.offset;
-    const key = `${coordinate.data.space ?? ""}:${value.toString(16)}:${kind}`;
+    const key = `${decodedAddressSpace(coordinate.data.space)}:${value.toString(16)}:${kind}`;
     if (seen.has(key))
       return err(seedLineError(number, `duplicate ${kind} seed at ${address}`));
     seen.add(key);

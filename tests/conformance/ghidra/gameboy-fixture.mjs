@@ -1,6 +1,13 @@
 /** Self-owned synthetic cartridge; no game bytes or emulator execution. */
 export const buildGameBoyRom = ({ banks = 4, cgb = false } = {}) => {
-  if (![2, 4, 8, 16, 32, 64, 128, 256, 512].includes(banks))
+  const sizeCodes = new Map([
+    [72, 0x52],
+    [80, 0x53],
+    [96, 0x54],
+  ]);
+  if (
+    ![2, 4, 8, 16, 32, 64, 128, 256, 512, ...sizeCodes.keys()].includes(banks)
+  )
     throw new Error("Invalid fixture bank count");
   const rom = Buffer.alloc(banks * 0x4000, 0xff);
   rom.set([0, 0xc3, 0x50, 1], 0x100);
@@ -15,7 +22,7 @@ export const buildGameBoyRom = ({ banks = 4, cgb = false } = {}) => {
   rom.write("REA TEST", 0x134, "ascii");
   rom[0x143] = cgb ? 0xc0 : 0;
   rom[0x147] = banks === 2 ? 0 : 0x19;
-  rom[0x148] = Math.log2(banks / 2);
+  rom[0x148] = sizeCodes.get(banks) ?? Math.log2(banks / 2);
   // LDH, LD (HL+), and SWAP distinguish SM83 from ordinary Z80 decoding.
   rom.set(
     [
