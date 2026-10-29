@@ -60,7 +60,11 @@ const languageDirectories = async (installDir: string): Promise<string[]> => {
     try {
       modules = await readdir(join(installDir, root));
     } catch (cause: unknown) {
-      if (cause instanceof Error && "code" in cause && cause.code === "ENOENT")
+      if (
+        cause instanceof Error &&
+        "code" in cause &&
+        (cause.code === "ENOENT" || cause.code === "ENOTDIR")
+      )
         continue;
       throw cause;
     }
@@ -152,7 +156,11 @@ export const readGhidraLanguageFingerprint = async (
     try {
       entries = await readdir(directory);
     } catch (cause: unknown) {
-      if (cause instanceof Error && "code" in cause && cause.code === "ENOENT")
+      if (
+        cause instanceof Error &&
+        "code" in cause &&
+        (cause.code === "ENOENT" || cause.code === "ENOTDIR")
+      )
         continue;
       throw cause;
     }

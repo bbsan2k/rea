@@ -136,6 +136,7 @@ describe("Game Boy cartridge boundary", () => {
       join(languages, "sm83.ldefs"),
       '<language_definitions><language id="SM83:LE:16:default"><compiler id="default"/></language></language_definitions>',
     );
+    await writeFile(join(directory, "Ghidra/Processors/.DS_Store"), "metadata");
     const resolved = await provider.resolveAnalysisProfile(target);
     if (!resolved.ok) throw resolved.error;
     expect(resolved.value.profile?.parameters).toMatchObject({
